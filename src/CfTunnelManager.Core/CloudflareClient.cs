@@ -55,7 +55,8 @@ public sealed class CloudflareClient(HttpClient http, IAccessTokenProvider token
             t["status"]?.GetValue<string>() ?? "unknown",
             Date(t, "conns_active_at"),
             Date(t, "conns_inactive_at"),
-            ConnectorVersions(t))).ToList();
+            ConnectorVersions(t),
+            ConnectorCount(t))).ToList();
     }
 
     public async Task<JsonObject?> GetTunnelConfigAsync(string accountId, string tunnelId, CancellationToken ct)
@@ -150,6 +151,18 @@ public sealed class CloudflareClient(HttpClient http, IAccessTokenProvider token
             .Distinct()
             .ToList();
         return versions.Count > 0 ? string.Join("、", versions) : null;
+    }
+
+    /// <summary>Each connector holds several connections, all sharing its client_id.</summary>
+    private static int ConnectorCount(JsonNode tunnel)
+    {
+        var connections = (tunnel["connections"] as JsonArray ?? []).Where(c => c is not null).ToList();
+        var clients = connections
+            .Select(c => c!["client_id"]?.GetValue<string>())
+            .Where(id => !string.IsNullOrEmpty(id))
+            .Distinct()
+            .Count();
+        return clients > 0 ? clients : Math.Min(connections.Count, 1);
     }
 
     private static string Text(JsonNode node, string key) => node[key]?.GetValue<string>() ?? "";

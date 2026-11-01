@@ -65,7 +65,9 @@ public sealed class TunnelViewModel : ObservableObject
         _ => "#A9C2E0",
     };
 
-    public string VersionText => _info.ConnectorVersion is { } version ? $"cloudflared {version}" : "";
+    public string ReplicaText => _info.ConnectorCount > 0 ? $"{_info.ConnectorCount} 个副本" : "";
+
+    public string? VersionDetail => _info.ConnectorVersion is { } version ? $"cloudflared {version}" : null;
 
     public bool HasNoApps => Apps.Count == 0 && Notice is null;
 

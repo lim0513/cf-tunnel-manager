@@ -10,7 +10,8 @@ public sealed record TunnelInfo(
     string Status,
     DateTimeOffset? ActiveAt,
     DateTimeOffset? InactiveAt,
-    string? ConnectorVersion = null);
+    string? ConnectorVersion = null,
+    int ConnectorCount = 0);
 
 public sealed record DnsRecordInfo(string Id, string Name, string Type, string Content);
 

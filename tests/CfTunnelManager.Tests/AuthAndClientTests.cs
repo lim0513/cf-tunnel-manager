@@ -117,6 +117,26 @@ public class AuthAndClientTests
     }
 
     [Fact]
+    public async Task GetTunnels_CountsConnectorsNotConnections()
+    {
+        var handler = new StubHandler(_ => Task.FromResult(Json("""
+            {"success":true,"result_info":{"total_pages":1},"result":[
+              {"id":"a","name":"a","status":"healthy","connections":[
+                {"client_id":"one","client_version":"2026.1.0"},
+                {"client_id":"one","client_version":"2026.1.0"},
+                {"client_id":"two","client_version":"2026.2.0"}]},
+              {"id":"b","name":"b","status":"healthy","connections":[{"client_id":"one","client_version":"2026.1.0"},{"client_id":"one","client_version":"2026.1.0"}]},
+              {"id":"c","name":"c","status":"down","connections":[]}
+            ]}
+            """)));
+        var client = new CloudflareClient(new HttpClient(handler), new FixedToken());
+
+        var tunnels = await client.GetTunnelsAsync("acct", default);
+
+        Assert.Equal([2, 1, 0], tunnels.Select(t => t.ConnectorCount));
+    }
+
+    [Fact]
     public async Task ApiError_SurfacesCloudflareMessage()
     {
         var handler = new StubHandler(_ => Task.FromResult(Json(
