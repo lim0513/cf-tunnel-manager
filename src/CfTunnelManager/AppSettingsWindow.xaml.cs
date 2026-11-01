@@ -42,9 +42,10 @@ public partial class AppSettingsWindow : Window
     }
 
     /// <summary>Edits an existing application.</summary>
-    public AppSettingsWindow(AppViewModel app, IReadOnlyList<ZoneInfo> zones)
+    public AppSettingsWindow(AppViewModel app, IReadOnlyList<ZoneInfo> zones, int? localPort)
     {
         InitializeComponent();
+        LocalPortBox.Text = localPort?.ToString() ?? "";
         IntroText.Text = "更新此已发布应用程序的配置。";
         SaveButton.Content = "保存更改";
         _originalService = app.App.Service;
@@ -88,6 +89,10 @@ public partial class AppSettingsWindow : Window
     public string? RoutePath => PathBox.Text.Trim() is { Length: > 0 } path ? path : null;
 
     public string Service => ServiceBox.Text.Trim();
+
+    public int? LocalPort => IsTcp && int.TryParse(LocalPortBox.Text.Trim(), out var port) ? port : null;
+
+    private bool IsTcp => ServiceClassifier.Classify(Service) == ServiceKind.Tcp;
 
     private void Load(OriginSettings settings)
     {
@@ -158,6 +163,10 @@ public partial class AppSettingsWindow : Window
         {
             return "路径不是有效的正则表达式。";
         }
+        if (IsTcp && LocalPortBox.Text.Trim().Length > 0 && LocalPort is not (>= 1 and <= 65535))
+        {
+            return "本地端口要填写 1 到 65535 之间的整数，留空表示自动分配。";
+        }
 
         TextBox[] numbers = [ConnectTimeoutBox, TlsTimeoutBox, TcpKeepAliveBox, KeepAliveTimeoutBox, KeepAliveConnectionsBox];
         if (numbers.Any(b => b.Text.Trim().Length > 0 && ParseNumber(b) is null))
@@ -174,6 +183,7 @@ public partial class AppSettingsWindow : Window
     private void RefreshStates()
     {
         FullHostnameText.Text = Hostname;
+        LocalPortPanel.Visibility = IsTcp ? Visibility.Visible : Visibility.Collapsed;
         var settings = Collect();
         ShowState(HttpPill, HttpState, settings.CustomHttpCount);
         ShowState(TlsPill, TlsState, settings.CustomTlsCount);

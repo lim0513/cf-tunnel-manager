@@ -101,7 +101,9 @@
                         </Border>
                         <TextBlock Grid.Column="3" Text="{Binding AppCountText}" Foreground="{StaticResource Ink}" VerticalAlignment="Center" />
                         <TextBlock Grid.Column="4" Text="{Binding SeenText}" Foreground="{StaticResource Ink}" VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="5" Text="{Binding ReplicaText}" ToolTip="{Binding VersionDetail}" Foreground="{StaticResource Ink}" VerticalAlignment="Center" />
+                        <Button Grid.Column="5" Content="{Binding ReplicaText}" Command="{Binding ShowReplicasCommand}" Style="{StaticResource ReplicaLink}"
+                                ToolTip="查看副本" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                Visibility="{Binding HasReplicas, Converter={StaticResource BoolToVisibility}}" />
                     </Grid>
                 </Expander.Header>
                 <StackPanel Margin="12,0,0,0">

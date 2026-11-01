@@ -67,6 +67,10 @@ public sealed class TunnelViewModel : ObservableObject
 
     public string ReplicaText => _info.ConnectorCount > 0 ? $"{_info.ConnectorCount} 个副本" : "";
 
+    public bool HasReplicas => _info.ConnectorCount > 0;
+
+    public System.Windows.Input.ICommand? ShowReplicasCommand { get; init; }
+
     public string? VersionDetail => _info.ConnectorVersion is { } version ? $"cloudflared {version}" : null;
 
     public bool HasNoApps => Apps.Count == 0 && Notice is null;

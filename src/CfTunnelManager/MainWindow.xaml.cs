@@ -122,7 +122,7 @@ public partial class MainWindow : Window
         var dialog = new AppSettingsWindow(_viewModel.EditableTunnels.ToList(), _viewModel.Zones) { Owner = this };
         if (dialog.ShowDialog() == true)
         {
-            await _viewModel.AddAppAsync(dialog.SelectedTunnel!, dialog.Hostname, dialog.RoutePath, dialog.Service, dialog.Settings!);
+            await _viewModel.AddAppAsync(dialog.SelectedTunnel!, dialog.Hostname, dialog.RoutePath, dialog.Service, dialog.Settings!, dialog.LocalPort);
         }
     }
 }

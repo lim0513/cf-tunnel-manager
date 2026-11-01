@@ -12,6 +12,8 @@ public interface ICloudflareApi
 
     Task<IReadOnlyList<TunnelInfo>> GetTunnelsAsync(string accountId, CancellationToken ct);
 
+    Task<IReadOnlyList<ConnectorInfo>> GetConnectorsAsync(string accountId, string tunnelId, CancellationToken ct);
+
     /// <summary>Returns null for a tunnel whose routes are managed by a local config file.</summary>
     Task<JsonObject?> GetTunnelConfigAsync(string accountId, string tunnelId, CancellationToken ct);
 
@@ -57,6 +59,26 @@ public sealed class CloudflareClient(HttpClient http, IAccessTokenProvider token
             Date(t, "conns_inactive_at"),
             ConnectorVersions(t),
             ConnectorCount(t))).ToList();
+    }
+
+    public async Task<IReadOnlyList<ConnectorInfo>> GetConnectorsAsync(string accountId, string tunnelId, CancellationToken ct)
+    {
+        var root = await SendAsync(HttpMethod.Get, $"/accounts/{accountId}/cfd_tunnel/{tunnelId}/connections", null, ct);
+        return (root["result"] as JsonArray ?? [])
+            .Where(c => c is not null)
+            .Select(c =>
+            {
+                var connections = (c!["conns"] as JsonArray ?? []).Where(n => n is not null).ToList();
+                return new ConnectorInfo(
+                    Text(c, "id"),
+                    Optional(c, "hostname"),
+                    connections.Select(n => Optional(n!, "origin_ip")).FirstOrDefault(ip => ip is not null),
+                    connections.Select(n => Text(n!, "colo_name")).Where(n => n.Length > 0).Distinct().ToList(),
+                    Optional(c, "version"),
+                    Optional(c, "arch"),
+                    connections.Select(n => Date(n!, "opened_at")).Min() ?? Date(c, "run_at"));
+            })
+            .ToList();
     }
 
     public async Task<JsonObject?> GetTunnelConfigAsync(string accountId, string tunnelId, CancellationToken ct)
@@ -164,6 +186,9 @@ public sealed class CloudflareClient(HttpClient http, IAccessTokenProvider token
             .Count();
         return clients > 0 ? clients : Math.Min(connections.Count, 1);
     }
+
+    private static string? Optional(JsonNode node, string key) =>
+        node[key]?.GetValue<string>() is { Length: > 0 } value ? value : null;
 
     private static string Text(JsonNode node, string key) => node[key]?.GetValue<string>() ?? "";
 

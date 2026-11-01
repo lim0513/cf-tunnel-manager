@@ -21,6 +21,10 @@ internal sealed class AccessConnectionManager : IDisposable
 
     public int? GetSavedPort(string hostname) => _ports.Find(hostname);
 
+    public bool IsPortUsedByAnother(string hostname, int port) => _ports.IsUsedByAnother(hostname, port);
+
+    public void SetSavedPort(string hostname, int? port) => _ports.Set(hostname, port);
+
     public async Task<int> ConnectAsync(string hostname, CancellationToken ct)
     {
         if (GetPort(hostname) is { } existing)

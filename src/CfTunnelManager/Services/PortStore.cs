@@ -21,6 +21,22 @@ internal sealed class PortStore
 
     public int? Find(string hostname) => _ports.TryGetValue(hostname, out var port) ? port : null;
 
+    public bool IsUsedByAnother(string hostname, int port) =>
+        _ports.Any(p => p.Value == port && !string.Equals(p.Key, hostname, StringComparison.OrdinalIgnoreCase));
+
+    public void Set(string hostname, int? port)
+    {
+        if (port is { } value)
+        {
+            _ports[hostname] = value;
+        }
+        else
+        {
+            _ports.Remove(hostname);
+        }
+        AppData.WriteAtomically(_path, JsonSerializer.SerializeToUtf8Bytes(_ports));
+    }
+
     public int GetOrAssign(string hostname)
     {
         if (Find(hostname) is { } saved)

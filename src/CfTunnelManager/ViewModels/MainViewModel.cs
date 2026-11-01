@@ -137,11 +137,22 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     public IReadOnlyList<ZoneInfo> Zones => _zones;
 
-    public async Task AddAppAsync(TunnelViewModel tunnel, string hostname, string? path, string service, OriginSettings settings)
+    public async Task AddAppAsync(
+        TunnelViewModel tunnel,
+        string hostname,
+        string? path,
+        string service,
+        OriginSettings settings,
+        int? localPort)
     {
         await RunAsync(async () =>
         {
+            RequirePortAvailable(hostname, localPort);
             await _manager.AddAppAsync(RequireAccount(), tunnel.Id, hostname, path, service, settings, _zones, CancellationToken.None);
+            if (localPort is not null)
+            {
+                _connections.SetSavedPort(hostname, localPort);
+            }
             await LoadAsync();
         });
     }
@@ -178,9 +189,20 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         });
     }
 
+    private async Task ShowReplicasAsync(string tunnelId, string tunnelName)
+    {
+        await RunAsync(async () =>
+        {
+            var connectors = await _api.GetConnectorsAsync(RequireAccount(), tunnelId, CancellationToken.None);
+            new ReplicasWindow(tunnelName, connectors) { Owner = Application.Current.MainWindow }.ShowDialog();
+        });
+    }
+
     internal async Task EditSettingsAsync(AppViewModel app)
     {
-        var dialog = new AppSettingsWindow(app, _zones) { Owner = Application.Current.MainWindow };
+        var oldHost = app.App.Hostname;
+        var savedPort = _connections.GetSavedPort(oldHost);
+        var dialog = new AppSettingsWindow(app, _zones, savedPort) { Owner = Application.Current.MainWindow };
         if (dialog.ShowDialog() != true)
         {
             return;
@@ -188,17 +210,41 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
         await RunAsync(async () =>
         {
-            await _manager.UpdateAppAsync(
-                RequireAccount(), app.Tunnel.Id, app.App, dialog.Hostname, dialog.RoutePath, dialog.Service,
-                dialog.Settings!, _zones, CancellationToken.None);
+            var renamed = !IngressEditor.SameHost(oldHost, dialog.Hostname);
+            RequirePortAvailable(dialog.Hostname, dialog.LocalPort);
 
-            var hostStaysRouted = IngressEditor.SameHost(app.App.Hostname, dialog.Hostname)
-                || Tunnels.SelectMany(t => t.Apps).Any(a => a != app && IngressEditor.SameHost(a.App.Hostname, app.App.Hostname));
-            if (!hostStaysRouted)
+            var routeChanged = renamed
+                || dialog.RoutePath != app.App.Path
+                || dialog.Service != app.App.Service
+                || !JsonNode.DeepEquals(dialog.Settings!.ApplyTo(app.App.OriginRequest), app.App.OriginRequest ?? new JsonObject());
+            if (routeChanged)
             {
-                _connections.Disconnect(app.App.Hostname);
+                await _manager.UpdateAppAsync(
+                    RequireAccount(), app.Tunnel.Id, app.App, dialog.Hostname, dialog.RoutePath, dialog.Service,
+                    dialog.Settings!, _zones, CancellationToken.None);
             }
-            await LoadAsync();
+
+            var hostStaysRouted = !renamed
+                || Tunnels.SelectMany(t => t.Apps).Any(a => a != app && IngressEditor.SameHost(a.App.Hostname, oldHost));
+            if (!hostStaysRouted || (app.ConnectedPort is { } connected && connected != dialog.LocalPort && dialog.LocalPort is not null))
+            {
+                _connections.Disconnect(oldHost);
+                SetConnectedPort(oldHost, null);
+            }
+
+            if (renamed)
+            {
+                _connections.SetSavedPort(oldHost, null);
+            }
+            if (renamed || dialog.LocalPort != savedPort)
+            {
+                _connections.SetSavedPort(dialog.Hostname, dialog.LocalPort);
+            }
+
+            if (routeChanged)
+            {
+                await LoadAsync();
+            }
         });
     }
 
@@ -310,7 +356,10 @@ public sealed class MainViewModel : ObservableObject, IDisposable
                     error is null && config is not null,
                     error,
                     !_collapsed.IsCollapsed(tunnel.Id),
-                    expanded => _collapsed.Set(tunnel.Id, !expanded));
+                    expanded => _collapsed.Set(tunnel.Id, !expanded))
+                {
+                    ShowReplicasCommand = new AsyncCommand(() => ShowReplicasAsync(tunnel.Id, tunnel.Name)),
+                };
                 if (config is not null)
                 {
                     foreach (var app in IngressEditor.ListApps(config))
@@ -405,6 +454,14 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         ZoneMatcher.Find(_zones, app.Hostname) is null
             ? DnsState.ZoneNotFound
             : DnsEvaluator.Evaluate(app.Hostname, tunnelId, records);
+
+    private void RequirePortAvailable(string hostname, int? port)
+    {
+        if (port is { } value && _connections.IsPortUsedByAnother(hostname, value))
+        {
+            throw new InvalidOperationException($"本地端口 {value} 已分配给其他应用。");
+        }
+    }
 
     private void SetConnectedPort(string hostname, int? port)
     {

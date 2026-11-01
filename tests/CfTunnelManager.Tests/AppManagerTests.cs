@@ -298,6 +298,8 @@ public class AppManagerTests
 
         public Task<IReadOnlyList<TunnelInfo>> GetTunnelsAsync(string accountId, CancellationToken ct) => throw new NotSupportedException();
 
+        public Task<IReadOnlyList<ConnectorInfo>> GetConnectorsAsync(string accountId, string tunnelId, CancellationToken ct) => throw new NotSupportedException();
+
         public async Task<JsonObject?> GetTunnelConfigAsync(string accountId, string tunnelId, CancellationToken ct)
         {
             await Task.Delay(Delay, ct);
