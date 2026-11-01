@@ -11,11 +11,14 @@
 ## 功能
 
 - **隧道状态：** 查看全部隧道的在线状态、最近上线时间和 cloudflared 版本，每 30 秒刷新一次。
-- **管理应用：** 添加或删除已发布的应用，并同步 DNS 记录。
+- **管理应用：** 添加、修改或删除已发布的应用，可设置主机名、路径和 Service URL，并同步 DNS 记录。
+- **应用设置：** 编辑 HTTP、TLS、连接和 Access 设置，与 Cloudflare 后台的“其他应用程序设置”对应。
 - **DNS 检查：** 标出缺失或指向其他目标的记录，缺失时可以一键修复。主机名已有其他记录时不会覆盖。
 - **TCP 连接：** 一键运行 `cloudflared access tcp`，每个主机名固定一个本地端口，已保存的 RDP、SSH 配置可以继续使用。
 - **HTTP 应用：** 在浏览器中打开。
 - **托盘：** 最小化到系统托盘，后台继续刷新，连接断开时弹出提醒。
+- **配色：** 深色、浅色，或跟随 Windows 自动切换。
+- **单实例：** 重复启动时回到已打开的窗口。
 
 ## 环境要求
 
@@ -91,6 +94,7 @@ dotnet test
 | `client-id.txt` | OAuth Client ID，不是密钥 |
 | `ports.json` | 每个主机名使用的本地端口 |
 | `collapsed.json` | 已收起的隧道分组 |
+| `theme.txt` | 配色选择 |
 
 应用只与 Cloudflare 通信，退出登录时会撤销令牌。
 
@@ -104,3 +108,5 @@ dotnet test
 ## 许可证
 
 [MIT](LICENSE)
+
+按钮图标来自 Google [Material Icons](https://github.com/google/material-design-icons)，使用 Apache License 2.0。

@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Tunnel Manager" Icon="Assets/app.ico" Width="980" Height="660" MinWidth="760" MinHeight="420"
         FontFamily="{StaticResource AppFont}" FontSize="13" Foreground="{StaticResource Ink}"
-        Background="{StaticResource Mist}" TextOptions.TextFormattingMode="Display"
+        Background="{DynamicResource Canvas}" TextOptions.TextFormattingMode="Display"
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
@@ -33,23 +33,33 @@
                              Fill="White" Stroke="{Binding Tunnel.StatusColor}" StrokeThickness="2" />
 
                     <StackPanel Grid.Column="1" VerticalAlignment="Top" Margin="0,9,12,8">
-                        <TextBlock Text="{Binding Hostname}" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                        <TextBlock Text="{Binding Service}" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding Hostname}" Foreground="{DynamicResource RowText}" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding Service}" Foreground="{DynamicResource RowMuted}" FontSize="12" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
                     </StackPanel>
 
                     <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="0,0,14,0">
-                        <TextBlock Text="{Binding DnsText}" Foreground="{StaticResource Alert}" HorizontalAlignment="Right"
+                        <TextBlock Text="{Binding DnsText}" Foreground="{DynamicResource RowWarning}" HorizontalAlignment="Right"
                                    Visibility="{Binding ShowDns, Converter={StaticResource BoolToVisibility}}" />
-                        <TextBlock Text="{Binding ConnectionText}" Foreground="{StaticResource Navy}" HorizontalAlignment="Right" />
+                        <TextBlock Text="{Binding ConnectionText}" Foreground="{DynamicResource RowConnection}" HorizontalAlignment="Right"
+                                   Visibility="{Binding ShowConnection, Converter={StaticResource BoolToVisibility}}" />
+                        <Border Background="{DynamicResource PillFill}" CornerRadius="11" Height="22" Padding="10,0" HorizontalAlignment="Right"
+                                Visibility="{Binding HasCustomSettings, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Text="已自定义设置" Foreground="{DynamicResource PillText}" Style="{StaticResource PillLabel}" />
+                        </Border>
                     </StackPanel>
 
                     <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,4,0">
                         <Button Content="修复 DNS" Command="{Binding RepairDnsCommand}" Margin="0,0,6,0"
                                 Visibility="{Binding CanRepairDns, Converter={StaticResource BoolToVisibility}}" />
-                        <Button Content="{Binding ActionText}" Command="{Binding ActionCommand}" MinWidth="64"
+                        <Button Content="{Binding ActionIcon}" Command="{Binding ActionCommand}" Style="{StaticResource IconButton}"
+                                Foreground="{Binding ActionForeground}" BorderBrush="{Binding ActionColor}" Background="{Binding ActionColor}"
+                                ToolTip="{Binding ActionText}" AutomationProperties.Name="{Binding ActionText}"
                                 Visibility="{Binding ShowAction, Converter={StaticResource BoolToVisibility}}" />
-                        <Button x:Name="DeleteButton" Content="删除" Command="{Binding DeleteCommand}" Style="{StaticResource QuietButton}"
-                                Margin="4,0,0,0" Opacity="0" />
+                        <Button Content="{StaticResource IconSettings}" Command="{Binding SettingsCommand}" Style="{StaticResource IconButton}" Margin="6,0,0,0"
+                                Foreground="{StaticResource Ink}" Background="{StaticResource Sun}" BorderBrush="{StaticResource Sun}"
+                                ToolTip="设置" AutomationProperties.Name="设置" />
+                        <Button x:Name="DeleteButton" Content="{StaticResource IconDelete}" Command="{Binding DeleteCommand}" Style="{StaticResource IconButton}"
+                                Foreground="White" Background="{StaticResource Danger}" BorderBrush="{StaticResource Danger}" Margin="6,0,0,0" Opacity="0" ToolTip="删除" AutomationProperties.Name="删除" />
                     </StackPanel>
                 </Grid>
             </Border>
@@ -62,7 +72,7 @@
                     <Setter TargetName="Rail" Property="Height" Value="16" />
                 </DataTrigger>
                 <Trigger SourceName="Row" Property="IsMouseOver" Value="True">
-                    <Setter TargetName="Row" Property="Background" Value="White" />
+                    <Setter TargetName="Row" Property="Background" Value="{DynamicResource RowHover}" />
                     <Setter TargetName="DeleteButton" Property="Opacity" Value="1" />
                 </Trigger>
                 <Trigger SourceName="Row" Property="IsKeyboardFocusWithin" Value="True">
@@ -72,36 +82,40 @@
         </DataTemplate>
 
         <DataTemplate x:Key="TunnelTemplate">
-            <StackPanel>
-            <Rectangle x:Name="Divider" Height="1" Fill="{StaticResource Line}" Margin="6,0,6,12" />
-            <Expander IsExpanded="{Binding IsExpanded}" Style="{StaticResource TunnelGroup}" Margin="0,0,0,12">
+            <Expander IsExpanded="{Binding IsExpanded}" Style="{StaticResource TunnelGroup}" Margin="0,0,0,14" Foreground="{StaticResource Ink}">
                 <Expander.Header>
-                    <StackPanel Orientation="Horizontal">
-                        <Ellipse x:Name="Lamp" Width="14" Height="14" Fill="{Binding StatusColor}" Stroke="{Binding StatusColor}" StrokeThickness="2"
-                                 VerticalAlignment="Center" Margin="0,0,12,0" />
-                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="17" VerticalAlignment="Center" />
-                        <TextBlock Text="{Binding StatusText}" Foreground="{Binding StatusColor}" FontWeight="SemiBold" Margin="12,1,0,0" VerticalAlignment="Center" />
-                        <TextBlock Text="{Binding AppCountText}" Foreground="{StaticResource Muted}" Margin="12,1,0,0" VerticalAlignment="Center" />
-                        <TextBlock Text="{Binding SeenText}" Foreground="{StaticResource Muted}" Margin="12,1,0,0" VerticalAlignment="Center" />
-                        <TextBlock Text="{Binding VersionText}" Foreground="{StaticResource Muted}" Margin="12,1,0,0" VerticalAlignment="Center" />
-                    </StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="26" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="72" />
+                            <ColumnDefinition Width="72" />
+                            <ColumnDefinition Width="168" />
+                            <ColumnDefinition Width="150" />
+                        </Grid.ColumnDefinitions>
+                        <Ellipse x:Name="Lamp" Width="14" Height="14" Fill="{StaticResource Ink}" Stroke="{StaticResource Ink}" StrokeThickness="2"
+                                 HorizontalAlignment="Left" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" Text="{Binding Name}" Foreground="{StaticResource Ink}" FontWeight="Bold" FontSize="17" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                        <Border Grid.Column="2" Background="{StaticResource Ink}" CornerRadius="10" Height="20" Padding="10,0" HorizontalAlignment="Left" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding StatusText}" Foreground="{Binding StatusColor}" FontWeight="SemiBold" FontSize="12" Style="{StaticResource PillLabel}" />
+                        </Border>
+                        <TextBlock Grid.Column="3" Text="{Binding AppCountText}" Foreground="{StaticResource Ink}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="4" Text="{Binding SeenText}" Foreground="{StaticResource Ink}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="5" Text="{Binding VersionText}" Foreground="{StaticResource Ink}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                    </Grid>
                 </Expander.Header>
-                <StackPanel Margin="6,-12,0,0">
-                    <TextBlock Text="{Binding Notice}" Foreground="{StaticResource Alert}" Margin="27,16,0,4" TextWrapping="Wrap"
+                <StackPanel Margin="12,0,0,0">
+                    <TextBlock Text="{Binding Notice}" Foreground="{DynamicResource RowWarning}" Margin="27,10,0,4" TextWrapping="Wrap"
                                Visibility="{Binding HasNotice, Converter={StaticResource BoolToVisibility}}" />
-                    <TextBlock Text="这条隧道还没有发布应用。" Foreground="{StaticResource Muted}" Margin="27,16,0,4"
+                    <TextBlock Text="这条隧道还没有发布应用。" Foreground="{DynamicResource RowMuted}" Margin="27,10,0,4"
                                Visibility="{Binding HasNoApps, Converter={StaticResource BoolToVisibility}}" />
-                    <Rectangle x:Name="Connector" Width="2" Height="14" HorizontalAlignment="Left" Margin="7,0,0,0"
+                    <Rectangle x:Name="Connector" Width="2" Height="4" HorizontalAlignment="Left" Margin="7,0,0,0"
                                Stroke="{Binding StatusColor}" StrokeThickness="2"
                                Visibility="{Binding HasApps, Converter={StaticResource BoolToVisibility}}" />
                     <ItemsControl ItemsSource="{Binding Apps}" ItemTemplate="{StaticResource StationTemplate}" Focusable="False" />
                 </StackPanel>
             </Expander>
-            </StackPanel>
             <DataTemplate.Triggers>
-                <DataTrigger Binding="{Binding RelativeSource={RelativeSource PreviousData}}" Value="{x:Null}">
-                    <Setter TargetName="Divider" Property="Visibility" Value="Collapsed" />
-                </DataTrigger>
                 <DataTrigger Binding="{Binding IsOnline}" Value="False">
                     <Setter TargetName="Lamp" Property="Fill" Value="Transparent" />
                     <Setter TargetName="Connector" Property="StrokeDashArray" Value="2 2" />
@@ -117,16 +131,24 @@
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <Border Background="{StaticResource Ink}" Padding="20,14">
+            <Border Background="{DynamicResource Bar}" Padding="20,14">
                 <DockPanel>
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button Content="刷新" Command="{Binding RefreshCommand}" Style="{StaticResource HeaderButton}" Margin="0,0,8,0" />
-                        <Button Content="退出登录" Command="{Binding SignOutCommand}" Style="{StaticResource HeaderButton}" Margin="0,0,8,0" />
-                        <Button Content="添加应用" Click="AddApp_Click" Style="{StaticResource PrimaryButton}" />
+                        <Button x:Name="ThemeButton" Click="Theme_Click" Style="{StaticResource IconButton}" Margin="0,0,8,0"
+                                Foreground="{DynamicResource BarText}" Background="Transparent" BorderBrush="{DynamicResource BarOutline}" />
+                        <Button Content="{StaticResource IconRefresh}" Command="{Binding RefreshCommand}" Style="{StaticResource IconButton}" Margin="0,0,8,0"
+                                Foreground="{DynamicResource BarText}" Background="Transparent" BorderBrush="{DynamicResource BarOutline}"
+                                ToolTip="刷新" AutomationProperties.Name="刷新" />
+                        <Button Content="{StaticResource IconSignOut}" Command="{Binding SignOutCommand}" Style="{StaticResource IconButton}" Margin="0,0,8,0"
+                                Foreground="{DynamicResource BarText}" Background="Transparent" BorderBrush="{DynamicResource BarOutline}"
+                                ToolTip="退出登录" AutomationProperties.Name="退出登录" />
+                        <Button Content="{StaticResource IconAdd}" Click="AddApp_Click" Style="{StaticResource IconButton}"
+                                Foreground="{StaticResource Ink}" Background="{StaticResource Signal}" BorderBrush="{StaticResource Signal}"
+                                ToolTip="添加应用" AutomationProperties.Name="添加应用" />
                     </StackPanel>
                     <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="{Binding AccountName}" Foreground="White" FontWeight="SemiBold" FontSize="15" TextTrimming="CharacterEllipsis" />
-                        <TextBlock Text="{Binding CountsText}" Foreground="#A9BACC" Margin="0,2,0,0" />
+                        <TextBlock Text="{Binding AccountName}" Foreground="{DynamicResource BarText}" FontWeight="SemiBold" FontSize="15" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding CountsText}" Foreground="{DynamicResource BarMuted}" Margin="0,2,0,0" />
                     </StackPanel>
                 </DockPanel>
             </Border>
@@ -137,16 +159,16 @@
 
             <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center"
                         Visibility="{Binding ShowNoTunnels, Converter={StaticResource BoolToVisibility}}">
-                <TextBlock Text="账号下还没有隧道" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" />
-                <TextBlock Text="在 Cloudflare 后台创建隧道后，点“刷新”。" Foreground="{StaticResource Muted}" Margin="0,6,0,0" />
+                <TextBlock Text="账号下还没有隧道" Foreground="{DynamicResource RowText}" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                <TextBlock Text="在 Cloudflare 后台创建隧道后，点“刷新”。" Foreground="{DynamicResource RowMuted}" Margin="0,6,0,0" />
             </StackPanel>
         </Grid>
 
-        <Grid x:Name="LoadingPanel" Background="{StaticResource Mist}"
+        <Grid x:Name="LoadingPanel" Background="{DynamicResource Canvas}"
               Visibility="{Binding ShowLoading, Converter={StaticResource BoolToVisibility}}">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                 <Canvas Width="128" Height="128" HorizontalAlignment="Center">
-                    <Path Data="{StaticResource TunnelPath}" Stroke="{StaticResource Navy}" StrokeThickness="14"
+                    <Path Data="{StaticResource TunnelPath}" Stroke="{DynamicResource RowText}" StrokeThickness="14"
                           StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
                     <Ellipse Width="20" Height="20" Fill="{StaticResource Signal}" Canvas.Left="-10" Canvas.Top="-10">
                         <Ellipse.RenderTransform>
@@ -154,7 +176,7 @@
                         </Ellipse.RenderTransform>
                     </Ellipse>
                 </Canvas>
-                <TextBlock Text="正在读取隧道" Foreground="{StaticResource Muted}" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                <TextBlock Text="正在读取隧道" Foreground="{DynamicResource RowMuted}" HorizontalAlignment="Center" Margin="0,4,0,0" />
             </StackPanel>
         </Grid>
 

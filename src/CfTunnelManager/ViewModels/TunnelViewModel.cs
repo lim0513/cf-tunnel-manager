@@ -59,10 +59,10 @@ public sealed class TunnelViewModel : ObservableObject
 
     public string StatusColor => _info.Status switch
     {
-        "healthy" => "#12A085",
-        "degraded" => "#E09A1A",
-        "down" => "#B03A7A",
-        _ => "#8A96A3",
+        "healthy" => "#19E3A5",
+        "degraded" => "#FFB020",
+        "down" => "#FF4F9A",
+        _ => "#A9C2E0",
     };
 
     public string VersionText => _info.ConnectorVersion is { } version ? $"cloudflared {version}" : "";

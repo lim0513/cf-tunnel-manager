@@ -11,7 +11,9 @@ public sealed class AppManager(ICloudflareApi api)
         string accountId,
         string tunnelId,
         string hostname,
+        string? path,
         string service,
+        OriginSettings settings,
         IReadOnlyList<ZoneInfo> zones,
         CancellationToken ct)
     {
@@ -26,7 +28,7 @@ public sealed class AppManager(ICloudflareApi api)
         await WithTunnelLockAsync(tunnelId, async () =>
         {
             var config = await RequireConfigAsync(accountId, tunnelId, ct);
-            await api.PutTunnelConfigAsync(accountId, tunnelId, IngressEditor.WithApp(config, hostname, service), ct);
+            await api.PutTunnelConfigAsync(accountId, tunnelId, IngressEditor.WithApp(config, hostname, service, path, settings), ct);
 
             if (hasRecord)
             {
@@ -68,6 +70,65 @@ public sealed class AppManager(ICloudflareApi api)
             foreach (var record in records.Where(r => DnsEvaluator.IsTunnelRecord(r, tunnelId)))
             {
                 await api.DeleteDnsRecordAsync(zone.Id, record.Id, ct);
+            }
+        });
+    }
+
+    public async Task UpdateAppAsync(
+        string accountId,
+        string tunnelId,
+        PublishedApp app,
+        string hostname,
+        string? path,
+        string service,
+        OriginSettings settings,
+        IReadOnlyList<ZoneInfo> zones,
+        CancellationToken ct)
+    {
+        var moving = !IngressEditor.SameHost(app.Hostname, hostname);
+        var zone = moving ? RequireZone(zones, hostname) : null;
+        var hasRecord = false;
+        if (zone is not null)
+        {
+            var existing = await api.GetDnsRecordsAsync(zone.Id, hostname, ct);
+            hasRecord = existing.Any(r => DnsEvaluator.IsTunnelRecord(r, tunnelId));
+            if (!hasRecord && existing.Count > 0)
+            {
+                throw new InvalidOperationException($"{hostname} 已有其他 DNS 记录，未做任何修改。");
+            }
+        }
+
+        await WithTunnelLockAsync(tunnelId, async () =>
+        {
+            var config = await RequireConfigAsync(accountId, tunnelId, ct);
+            var updated = IngressEditor.WithAppChanges(config, app, hostname, path, service, settings);
+            await api.PutTunnelConfigAsync(accountId, tunnelId, updated, ct);
+            if (zone is null)
+            {
+                return;
+            }
+
+            if (!hasRecord)
+            {
+                try
+                {
+                    await api.CreateTunnelDnsRecordAsync(zone.Id, hostname, tunnelId, ct);
+                }
+                catch
+                {
+                    await api.PutTunnelConfigAsync(accountId, tunnelId, config, CancellationToken.None);
+                    throw;
+                }
+            }
+
+            var stillRouted = IngressEditor.ListApps(updated).Any(a => IngressEditor.SameHost(a.Hostname, app.Hostname));
+            if (!stillRouted && ZoneMatcher.Find(zones, app.Hostname) is { } oldZone)
+            {
+                var records = await api.GetDnsRecordsAsync(oldZone.Id, app.Hostname, ct);
+                foreach (var record in records.Where(r => DnsEvaluator.IsTunnelRecord(r, tunnelId)))
+                {
+                    await api.DeleteDnsRecordAsync(oldZone.Id, record.Id, ct);
+                }
             }
         });
     }

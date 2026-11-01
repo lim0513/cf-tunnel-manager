@@ -135,11 +135,13 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
     }
 
-    public async Task AddAppAsync(TunnelViewModel tunnel, string hostname, string service)
+    public IReadOnlyList<ZoneInfo> Zones => _zones;
+
+    public async Task AddAppAsync(TunnelViewModel tunnel, string hostname, string? path, string service, OriginSettings settings)
     {
         await RunAsync(async () =>
         {
-            await _manager.AddAppAsync(RequireAccount(), tunnel.Id, hostname, service, _zones, CancellationToken.None);
+            await _manager.AddAppAsync(RequireAccount(), tunnel.Id, hostname, path, service, settings, _zones, CancellationToken.None);
             await LoadAsync();
         });
     }
@@ -156,11 +158,13 @@ public sealed class MainViewModel : ObservableObject, IDisposable
                 SetConnectedPort(app.App.Hostname, null);
                 break;
             case ServiceKind.Tcp:
+                app.IsConnecting = true;
                 await RunAsync(async () =>
                 {
                     var port = await _connections.ConnectAsync(app.App.Hostname, CancellationToken.None);
                     SetConnectedPort(app.App.Hostname, port);
                 });
+                app.IsConnecting = false;
                 break;
         }
     }
@@ -170,6 +174,30 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         await RunAsync(async () =>
         {
             await _manager.RepairDnsAsync(app.Tunnel.Id, app.App.Hostname, _zones, CancellationToken.None);
+            await LoadAsync();
+        });
+    }
+
+    internal async Task EditSettingsAsync(AppViewModel app)
+    {
+        var dialog = new AppSettingsWindow(app, _zones) { Owner = Application.Current.MainWindow };
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        await RunAsync(async () =>
+        {
+            await _manager.UpdateAppAsync(
+                RequireAccount(), app.Tunnel.Id, app.App, dialog.Hostname, dialog.RoutePath, dialog.Service,
+                dialog.Settings!, _zones, CancellationToken.None);
+
+            var hostStaysRouted = IngressEditor.SameHost(app.App.Hostname, dialog.Hostname)
+                || Tunnels.SelectMany(t => t.Apps).Any(a => a != app && IngressEditor.SameHost(a.App.Hostname, app.App.Hostname));
+            if (!hostStaysRouted)
+            {
+                _connections.Disconnect(app.App.Hostname);
+            }
             await LoadAsync();
         });
     }

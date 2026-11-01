@@ -14,10 +14,19 @@ public static class IngressEditor
     public static IReadOnlyList<PublishedApp> ListApps(JsonObject config) =>
         Rules(config)
             .Where(r => Hostname(r) is not null)
-            .Select(r => new PublishedApp(Hostname(r)!, r["service"]?.GetValue<string>() ?? "", r["path"]?.GetValue<string>()))
+            .Select(r => new PublishedApp(
+                Hostname(r)!,
+                r["service"]?.GetValue<string>() ?? "",
+                r["path"]?.GetValue<string>(),
+                r["originRequest"]?.DeepClone() as JsonObject))
             .ToList();
 
-    public static JsonObject WithApp(JsonObject config, string hostname, string service)
+    public static JsonObject WithApp(
+        JsonObject config,
+        string hostname,
+        string service,
+        string? path = null,
+        OriginSettings? settings = null)
     {
         var copy = config.DeepClone().AsObject();
         if (copy["ingress"] is not JsonArray ingress)
@@ -26,7 +35,7 @@ public static class IngressEditor
             copy["ingress"] = ingress;
         }
 
-        if (Rules(copy).Any(r => SameHost(Hostname(r), hostname)))
+        if (Rules(copy).Any(r => SameHost(Hostname(r), hostname) && r["path"]?.GetValue<string>() == path))
         {
             throw new InvalidOperationException($"{hostname} 已经在这条隧道上。");
         }
@@ -37,7 +46,16 @@ public static class IngressEditor
             ingress.Add(new JsonObject { ["service"] = CatchAll });
             catchAllIndex = ingress.Count - 1;
         }
-        ingress.Insert(catchAllIndex, new JsonObject { ["hostname"] = hostname, ["service"] = service });
+        var rule = new JsonObject { ["hostname"] = hostname, ["service"] = service };
+        if (path is not null)
+        {
+            rule["path"] = path;
+        }
+        if (settings?.ApplyTo(null) is { Count: > 0 } origin)
+        {
+            rule["originRequest"] = origin;
+        }
+        ingress.Insert(catchAllIndex, rule);
         return copy;
     }
 
@@ -57,8 +75,57 @@ public static class IngressEditor
         return copy;
     }
 
+    public static JsonObject WithAppChanges(
+        JsonObject config,
+        PublishedApp app,
+        string hostname,
+        string? path,
+        string service,
+        OriginSettings settings)
+    {
+        var copy = WithOriginSettings(config, app, settings);
+        var rule = FindRule(copy, app);
+        if (Rules(copy).Any(r => r != rule && SameHost(Hostname(r), hostname) && r["path"]?.GetValue<string>() == path))
+        {
+            throw new InvalidOperationException($"{hostname} 已经在这条隧道上。");
+        }
+
+        rule["hostname"] = hostname;
+        rule["service"] = service;
+        if (path is null)
+        {
+            rule.AsObject().Remove("path");
+        }
+        else
+        {
+            rule["path"] = path;
+        }
+        return copy;
+    }
+
+    public static JsonObject WithOriginSettings(JsonObject config, PublishedApp app, OriginSettings settings)
+    {
+        var copy = config.DeepClone().AsObject();
+        var rule = FindRule(copy, app);
+
+        var updated = settings.ApplyTo(rule["originRequest"] as JsonObject);
+        if (updated.Count > 0)
+        {
+            rule["originRequest"] = updated;
+        }
+        else
+        {
+            rule.AsObject().Remove("originRequest");
+        }
+        return copy;
+    }
+
     public static bool SameHost(string? left, string? right) =>
         string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
+
+    private static JsonNode FindRule(JsonObject config, PublishedApp app) =>
+        Rules(config).FirstOrDefault(r => SameHost(Hostname(r), app.Hostname) && r["path"]?.GetValue<string>() == app.Path)
+        ?? throw new InvalidOperationException($"{app.Hostname} 已不在这条隧道上，请刷新后重试。");
 
     private static string? Hostname(JsonNode rule) => rule["hostname"]?.GetValue<string>();
 

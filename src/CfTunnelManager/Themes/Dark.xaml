@@ -1,0 +1,14 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
+    <SolidColorBrush x:Key="Canvas" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Color="#0E2240" />
+    <SolidColorBrush x:Key="Bar" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Color="#081529" />
+    <SolidColorBrush x:Key="BarText" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="BarMuted" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Color="#A9C2E0" />
+    <SolidColorBrush x:Key="BarOutline" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Color="#4A6280" />
+    <SolidColorBrush x:Key="RowHover" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Color="#1A3560" />
+    <SolidColorBrush x:Key="RowText" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="RowMuted" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Color="#A9C2E0" />
+    <SolidColorBrush x:Key="RowConnection" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Color="#FFC83D" />
+    <SolidColorBrush x:Key="RowWarning" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Color="#FF8FBE" />
+    <SolidColorBrush x:Key="PillFill" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Color="#24487E" />
+    <SolidColorBrush x:Key="PillText" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Color="#BBD9FF" />
+</ResourceDictionary>

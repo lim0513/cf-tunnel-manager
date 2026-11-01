@@ -10,6 +10,8 @@ public partial class App : Application
 {
     private SingleInstance? _instance;
 
+    internal ThemeManager Theme { get; private set; } = null!;
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
@@ -22,6 +24,7 @@ public partial class App : Application
             return;
         }
 
+        Theme = new ThemeManager(this);
         var window = new MainWindow();
         _instance.Listen(() => Dispatcher.BeginInvoke(window.BringToFront));
         window.Show();
@@ -29,6 +32,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        Theme?.Dispose();
         _instance?.Dispose();
         base.OnExit(e);
     }

@@ -12,11 +12,45 @@ public class AppManagerTests
     {
         var api = new FakeApi();
 
-        await new AppManager(api).AddAppAsync("acct", "t1", "b.example.com", "tcp://h:1", Zones, default);
+        await new AppManager(api).AddAppAsync("acct", "t1", "b.example.com", null, "tcp://h:1", new OriginSettings(), Zones, default);
 
         Assert.Contains(IngressEditor.ListApps(api.Config), a => a.Hostname == "b.example.com");
         Assert.Single(api.Records);
         Assert.Equal("t1.cfargotunnel.com", api.Records[0].Content);
+    }
+
+    [Fact]
+    public async Task AddApp_CanIncludePathAndSettings()
+    {
+        var api = new FakeApi();
+        var settings = new OriginSettings { NoTlsVerify = true, ConnectTimeout = 45 };
+
+        await new AppManager(api).AddAppAsync("acct", "t1", "b.example.com", "^/api", "https://h:1", settings, Zones, default);
+
+        var app = IngressEditor.ListApps(api.Config).Single(a => a.Hostname == "b.example.com");
+        Assert.Equal("^/api", app.Path);
+        Assert.True(app.OriginRequest!["noTLSVerify"]!.GetValue<bool>());
+        Assert.Equal(45, app.OriginRequest!["connectTimeout"]!.GetValue<int>());
+    }
+
+    [Fact]
+    public async Task AddApp_WithDefaultSettingsWritesNoOriginRequest()
+    {
+        var api = new FakeApi();
+
+        await new AppManager(api).AddAppAsync("acct", "t1", "b.example.com", null, "http://h", new OriginSettings(), Zones, default);
+
+        Assert.Null(IngressEditor.ListApps(api.Config).Single(a => a.Hostname == "b.example.com").OriginRequest);
+    }
+
+    [Fact]
+    public async Task AddApp_AllowsTheSameHostOnAnotherPath()
+    {
+        var api = new FakeApi();
+
+        await new AppManager(api).AddAppAsync("acct", "t1", "a.example.com", "^/api", "http://h", new OriginSettings(), Zones, default);
+
+        Assert.Equal(2, IngressEditor.ListApps(api.Config).Count(a => a.Hostname == "a.example.com"));
     }
 
     [Fact]
@@ -27,7 +61,7 @@ public class AppManagerTests
         var before = api.Config.ToJsonString();
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            new AppManager(api).AddAppAsync("acct", "t1", "b.example.com", "tcp://h:1", Zones, default));
+            new AppManager(api).AddAppAsync("acct", "t1", "b.example.com", null, "tcp://h:1", new OriginSettings(), Zones, default));
 
         Assert.Equal(before, api.Config.ToJsonString());
         Assert.Equal(0, api.PutCount);
@@ -39,7 +73,7 @@ public class AppManagerTests
         var api = new FakeApi();
         api.Records.Add(new DnsRecordInfo("r", "b.example.com", "CNAME", "t1.cfargotunnel.com"));
 
-        await new AppManager(api).AddAppAsync("acct", "t1", "b.example.com", "tcp://h:1", Zones, default);
+        await new AppManager(api).AddAppAsync("acct", "t1", "b.example.com", null, "tcp://h:1", new OriginSettings(), Zones, default);
 
         Assert.Single(api.Records);
         Assert.Contains(IngressEditor.ListApps(api.Config), a => a.Hostname == "b.example.com");
@@ -52,7 +86,7 @@ public class AppManagerTests
         var before = api.Config.ToJsonString();
 
         await Assert.ThrowsAsync<CloudflareApiException>(() =>
-            new AppManager(api).AddAppAsync("acct", "t1", "b.example.com", "tcp://h:1", Zones, default));
+            new AppManager(api).AddAppAsync("acct", "t1", "b.example.com", null, "tcp://h:1", new OriginSettings(), Zones, default));
 
         Assert.Equal(before, api.Config.ToJsonString());
     }
@@ -63,7 +97,7 @@ public class AppManagerTests
         var api = new FakeApi { HasRemoteConfig = false };
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            new AppManager(api).AddAppAsync("acct", "t1", "b.example.com", "tcp://h:1", Zones, default));
+            new AppManager(api).AddAppAsync("acct", "t1", "b.example.com", null, "tcp://h:1", new OriginSettings(), Zones, default));
     }
 
     [Fact]
@@ -73,8 +107,8 @@ public class AppManagerTests
         var manager = new AppManager(api);
 
         await Task.WhenAll(
-            manager.AddAppAsync("acct", "t1", "b.example.com", "tcp://h:1", Zones, default),
-            manager.AddAppAsync("acct", "t1", "c.example.com", "tcp://h:2", Zones, default));
+            manager.AddAppAsync("acct", "t1", "b.example.com", null, "tcp://h:1", new OriginSettings(), Zones, default),
+            manager.AddAppAsync("acct", "t1", "c.example.com", null, "tcp://h:2", new OriginSettings(), Zones, default));
 
         var hosts = IngressEditor.ListApps(api.Config).Select(a => a.Hostname).ToList();
         Assert.Contains("b.example.com", hosts);
@@ -111,6 +145,125 @@ public class AppManagerTests
         await new AppManager(api).RemoveAppAsync("acct", "t1", new PublishedApp("a.example.com", "http://x", "/x"), true, Zones, default);
 
         Assert.Single(api.Records);
+    }
+
+    private static PublishedApp ExistingApp => new("a.example.com", "http://x");
+
+    private static async Task UpdateAsync(FakeApi api, string hostname, string service = "http://x") =>
+        await new AppManager(api).UpdateAppAsync("acct", "t1", ExistingApp, hostname, null, service, new OriginSettings(), Zones, default);
+
+    [Fact]
+    public async Task UpdateApp_ChangingServiceLeavesDnsAlone()
+    {
+        var api = new FakeApi();
+        api.Records.Add(new DnsRecordInfo("own", "a.example.com", "CNAME", "t1.cfargotunnel.com"));
+
+        await UpdateAsync(api, "a.example.com", "tcp://new:22");
+
+        Assert.Equal("tcp://new:22", Assert.Single(IngressEditor.ListApps(api.Config)).Service);
+        Assert.Equal("own", Assert.Single(api.Records).Id);
+    }
+
+    [Fact]
+    public async Task UpdateApp_ChangingHostnameMovesTheDnsRecord()
+    {
+        var api = new FakeApi();
+        api.Records.Add(new DnsRecordInfo("own", "a.example.com", "CNAME", "t1.cfargotunnel.com"));
+
+        await UpdateAsync(api, "new.example.com");
+
+        Assert.Equal("new.example.com", Assert.Single(IngressEditor.ListApps(api.Config)).Hostname);
+        Assert.Equal("new.example.com", Assert.Single(api.Records).Name);
+    }
+
+    [Fact]
+    public async Task UpdateApp_KeepsOriginRequestWhenRenaming()
+    {
+        var api = new FakeApi();
+        var app = ExistingApp;
+
+        await new AppManager(api).UpdateAppAsync(
+            "acct", "t1", app, "new.example.com", null, "http://x", new OriginSettings { HttpHostHeader = "h" }, Zones, default);
+
+        Assert.Equal("h", IngressEditor.ListApps(api.Config)[0].OriginRequest!["httpHostHeader"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task UpdateApp_RefusesWhenTheNewHostnameHasAnotherRecord()
+    {
+        var api = new FakeApi();
+        api.Records.Add(new DnsRecordInfo("own", "a.example.com", "CNAME", "t1.cfargotunnel.com"));
+        api.Records.Add(new DnsRecordInfo("other", "new.example.com", "A", "1.2.3.4"));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => UpdateAsync(api, "new.example.com"));
+
+        Assert.Equal(0, api.PutCount);
+        Assert.Equal(2, api.Records.Count);
+    }
+
+    [Fact]
+    public async Task UpdateApp_RestoresEverythingWhenTheNewRecordFails()
+    {
+        var api = new FakeApi { FailDnsCreate = true };
+        api.Records.Add(new DnsRecordInfo("own", "a.example.com", "CNAME", "t1.cfargotunnel.com"));
+        var before = api.Config.ToJsonString();
+
+        await Assert.ThrowsAsync<CloudflareApiException>(() => UpdateAsync(api, "new.example.com"));
+        Assert.Equal(2, api.PutCount);
+
+        Assert.Equal(before, api.Config.ToJsonString());
+        Assert.Equal("own", Assert.Single(api.Records).Id);
+    }
+
+    [Fact]
+    public async Task UpdateApp_KeepsOldDnsWhileAnotherPathUsesTheHost()
+    {
+        var api = new FakeApi();
+        api.Config = JsonNode.Parse("""
+            { "ingress": [
+              { "hostname": "a.example.com", "path": "/x", "service": "http://x" },
+              { "hostname": "a.example.com", "service": "http://y" },
+              { "service": "http_status:404" }
+            ] }
+            """)!.AsObject();
+        api.Records.Add(new DnsRecordInfo("own", "a.example.com", "CNAME", "t1.cfargotunnel.com"));
+        var app = new PublishedApp("a.example.com", "http://x", "/x");
+
+        await new AppManager(api).UpdateAppAsync("acct", "t1", app, "new.example.com", "/x", "http://x", new OriginSettings(), Zones, default);
+
+        Assert.Contains(api.Records, r => r.Id == "own");
+        Assert.Contains(api.Records, r => r.Name == "new.example.com");
+    }
+
+    [Fact]
+    public async Task UpdateApp_CanSetAndClearThePath()
+    {
+        var api = new FakeApi();
+        var manager = new AppManager(api);
+
+        await manager.UpdateAppAsync("acct", "t1", ExistingApp, "a.example.com", "^/api", "http://x", new OriginSettings(), Zones, default);
+        Assert.Equal("^/api", IngressEditor.ListApps(api.Config)[0].Path);
+
+        var withPath = IngressEditor.ListApps(api.Config)[0];
+        await manager.UpdateAppAsync("acct", "t1", withPath, "a.example.com", null, "http://x", new OriginSettings(), Zones, default);
+        Assert.Null(IngressEditor.ListApps(api.Config)[0].Path);
+    }
+
+    [Fact]
+    public async Task UpdateApp_RefusesAHostnameAlreadyOnTheTunnel()
+    {
+        var api = new FakeApi();
+        api.Config = JsonNode.Parse("""
+            { "ingress": [
+              { "hostname": "a.example.com", "service": "http://x" },
+              { "hostname": "b.example.com", "service": "http://y" },
+              { "service": "http_status:404" }
+            ] }
+            """)!.AsObject();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => UpdateAsync(api, "b.example.com"));
+
+        Assert.Equal(0, api.PutCount);
     }
 
     [Fact]

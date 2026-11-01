@@ -14,7 +14,11 @@ public sealed record TunnelInfo(
 
 public sealed record DnsRecordInfo(string Id, string Name, string Type, string Content);
 
-public sealed record PublishedApp(string Hostname, string Service, string? Path = null);
+public sealed record PublishedApp(
+    string Hostname,
+    string Service,
+    string? Path = null,
+    System.Text.Json.Nodes.JsonObject? OriginRequest = null);
 
 public sealed record OAuthTokens(string AccessToken, string RefreshToken, DateTimeOffset ExpiresAt);
 
