@@ -1,8 +1,7 @@
 ﻿<Application x:Class="CfTunnelManager.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:CfTunnelManager"
-             StartupUri="MainWindow.xaml">
+             xmlns:local="clr-namespace:CfTunnelManager">
     <Application.Resources>
         <FontFamily x:Key="AppFont">Segoe UI Variable Text, Microsoft YaHei UI</FontFamily>
         <SolidColorBrush x:Key="Ink" Color="#10243B" />

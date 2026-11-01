@@ -16,7 +16,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = _viewModel;
-        _tray = new TrayIcon(RestoreFromTray, Close);
+        _tray = new TrayIcon(BringToFront, Close);
         _viewModel.PropertyChanged += OnViewModelChanged;
         LoadingPanel.IsVisibleChanged += OnLoadingVisibilityChanged;
         Loaded += async (_, _) => await _viewModel.InitializeAsync();
@@ -53,11 +53,20 @@ public partial class MainWindow : Window
         }
     }
 
-    private void RestoreFromTray()
+    public void BringToFront()
     {
         Show();
-        WindowState = _stateBeforeMinimize;
-        Activate();
+        if (WindowState == WindowState.Minimized)
+        {
+            WindowState = _stateBeforeMinimize;
+        }
+
+        // Lifts the window above others even when Windows refuses to give it the foreground.
+        Topmost = true;
+        Topmost = false;
+
+        var dialog = OwnedWindows.Cast<Window>().LastOrDefault();
+        (dialog ?? this).Activate();
     }
 
     private void OnViewModelChanged(object? sender, PropertyChangedEventArgs e)
