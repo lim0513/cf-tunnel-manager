@@ -117,12 +117,5 @@ public partial class MainWindow : Window
         new RequirementsWindow(_viewModel) { Owner = this }.ShowDialog();
     }
 
-    private async void AddApp_Click(object sender, RoutedEventArgs e)
-    {
-        var dialog = new AppSettingsWindow(_viewModel.EditableTunnels.ToList(), _viewModel.Zones) { Owner = this };
-        if (dialog.ShowDialog() == true)
-        {
-            await _viewModel.AddAppAsync(dialog.SelectedTunnel!, dialog.Hostname, dialog.RoutePath, dialog.Service, dialog.Settings!, dialog.LocalPort);
-        }
-    }
+    private async void AddApp_Click(object sender, RoutedEventArgs e) => await _viewModel.OpenAddAppAsync();
 }

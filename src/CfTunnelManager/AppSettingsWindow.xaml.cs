@@ -32,7 +32,7 @@ public partial class AppSettingsWindow : Window
 
         _loading = true;
         TunnelBox.ItemsSource = tunnels;
-        TunnelBox.SelectedIndex = tunnels.Count > 0 ? 0 : -1;
+        TunnelBox.SelectedItem = tunnels.FirstOrDefault();
         ZoneBox.ItemsSource = zones.Select(z => z.Name).ToList();
         ZoneBox.SelectedIndex = zones.Count > 0 ? 0 : -1;
         _loading = false;

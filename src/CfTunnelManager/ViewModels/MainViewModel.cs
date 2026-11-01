@@ -137,7 +137,16 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     public IReadOnlyList<ZoneInfo> Zones => _zones;
 
-    public async Task AddAppAsync(
+    public async Task OpenAddAppAsync()
+    {
+        var dialog = new AppSettingsWindow(EditableTunnels.ToList(), _zones) { Owner = Application.Current.MainWindow };
+        if (dialog.ShowDialog() == true)
+        {
+            await AddAppAsync(dialog.SelectedTunnel!, dialog.Hostname, dialog.RoutePath, dialog.Service, dialog.Settings!, dialog.LocalPort);
+        }
+    }
+
+    private async Task AddAppAsync(
         TunnelViewModel tunnel,
         string hostname,
         string? path,
@@ -148,12 +157,15 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         await RunAsync(async () =>
         {
             RequirePortAvailable(hostname, localPort);
+            Message = $"正在添加 {hostname}…";
             await _manager.AddAppAsync(RequireAccount(), tunnel.Id, hostname, path, service, settings, _zones, CancellationToken.None);
             if (localPort is not null)
             {
                 _connections.SetSavedPort(hostname, localPort);
             }
+            _collapsed.Set(tunnel.Id, false);
             await LoadAsync();
+            Message = $"已添加 {hostname}";
         });
     }
 
@@ -219,6 +231,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
                 || !JsonNode.DeepEquals(dialog.Settings!.ApplyTo(app.App.OriginRequest), app.App.OriginRequest ?? new JsonObject());
             if (routeChanged)
             {
+                Message = $"正在保存 {dialog.Hostname}…";
                 await _manager.UpdateAppAsync(
                     RequireAccount(), app.Tunnel.Id, app.App, dialog.Hostname, dialog.RoutePath, dialog.Service,
                     dialog.Settings!, _zones, CancellationToken.None);
@@ -244,6 +257,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             if (routeChanged)
             {
                 await LoadAsync();
+                Message = $"已保存 {dialog.Hostname}";
             }
         });
     }
@@ -258,6 +272,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
         await RunAsync(async () =>
         {
+            Message = $"正在删除 {app.Hostname}…";
             await _manager.RemoveAppAsync(
                 RequireAccount(), app.Tunnel.Id, app.App, dialog.DeleteDns, _zones, CancellationToken.None);
             var stillRouted = Tunnels.SelectMany(t => t.Apps).Any(a => a != app && IngressEditor.SameHost(a.App.Hostname, app.App.Hostname));
@@ -266,6 +281,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
                 _connections.Disconnect(app.App.Hostname);
             }
             await LoadAsync();
+            Message = $"已删除 {app.Hostname}";
         });
     }
 
