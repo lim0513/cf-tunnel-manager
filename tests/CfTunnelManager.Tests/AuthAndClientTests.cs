@@ -20,6 +20,14 @@ public class AuthAndClientTests
     }
 
     [Fact]
+    public void AuthorizationUrl_UsesTheCurrentClientId()
+    {
+        var oauth = new OAuthClient(new HttpClient(), "first") { ClientId = "second" };
+
+        Assert.Contains("client_id=second", oauth.CreateAuthorizationUrl("challenge", "state"));
+    }
+
+    [Fact]
     public async Task ExpiredToken_RefreshesOnceAndPersistsRotatedTokenFirst()
     {
         var clock = new FakeTimeProvider(DateTimeOffset.UnixEpoch);

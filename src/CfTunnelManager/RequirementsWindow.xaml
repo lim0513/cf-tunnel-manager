@@ -1,46 +1,84 @@
 <Window x:Class="CfTunnelManager.RequirementsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="配置要求" Icon="Assets/app.ico" Width="500" SizeToContent="Height" ResizeMode="NoResize"
+        Title="配置要求" Icon="Assets/app.ico" Width="560" MaxHeight="680" SizeToContent="Height" ResizeMode="NoResize"
         FontFamily="{StaticResource AppFont}" FontSize="13" Foreground="{StaticResource Ink}"
         Background="White" TextOptions.TextFormattingMode="Display" WindowStartupLocation="CenterOwner">
     <Window.Resources>
+        <Style x:Key="Section" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+        </Style>
         <Style x:Key="Heading" TargetType="TextBlock">
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Margin" Value="0,14,0,3" />
+            <Setter Property="Margin" Value="0,12,0,3" />
         </Style>
         <Style x:Key="Detail" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource Muted}" />
             <Setter Property="TextWrapping" Value="Wrap" />
             <Setter Property="LineHeight" Value="20" />
         </Style>
+        <Style x:Key="Step" TargetType="TextBlock" BasedOn="{StaticResource Detail}">
+            <Setter Property="Foreground" Value="{StaticResource Ink}" />
+            <Setter Property="Margin" Value="0,5,0,0" />
+        </Style>
     </Window.Resources>
-    <StackPanel>
-        <StackPanel Margin="24,20,24,18">
-            <TextBlock Text="使用前需要准备" FontSize="17" FontWeight="SemiBold" />
-
-            <TextBlock Text="Cloudflare 账号" Style="{StaticResource Heading}" Margin="0,16,0,3" />
-            <TextBlock Style="{StaticResource Detail}"
-                       Text="需要是这个应用所属账号的成员。登录时会打开浏览器，请授权读取账号，以及管理 DNS 和隧道。" />
-
-            <TextBlock Text="网页后台管理的隧道" Style="{StaticResource Heading}" />
-            <TextBlock Style="{StaticResource Detail}"
-                       Text="服务端的 cloudflared 要先装好并连上。用本地配置文件管理的隧道能看到状态，但无法查看或修改应用。" />
-
-            <TextBlock Text="托管在 Cloudflare 的域名" Style="{StaticResource Heading}" />
-            <TextBlock Style="{StaticResource Detail}"
-                       Text="添加应用时会自动创建 DNS 记录，所以访问地址要属于这个账号下的域名。" />
-
-            <TextBlock Text="本机的 cloudflared" Style="{StaticResource Heading}" />
-            <TextBlock Style="{StaticResource Detail}"
-                       Text="连接 TCP 应用时需要。只查看状态和打开 HTTP 应用时不需要。" />
-
-            <TextBlock Text="空闲的 8976 端口" Style="{StaticResource Heading}" />
-            <TextBlock Style="{StaticResource Detail}"
-                       Text="浏览器授权完成后，通过本机的 8976 端口回到这个应用。" />
-        </StackPanel>
-        <Border Background="{StaticResource Mist}" Padding="24,12">
-            <Button Content="知道了" IsCancel="True" IsDefault="True" HorizontalAlignment="Right" />
+    <DockPanel>
+        <Border DockPanel.Dock="Bottom" Background="{StaticResource Mist}" Padding="24,12">
+            <Button Content="关闭" IsCancel="True" HorizontalAlignment="Right" />
         </Border>
-    </StackPanel>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
+            <StackPanel Margin="24,20,24,20">
+                <TextBlock Text="使用前需要准备" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,14" />
+
+                <TextBlock Text="创建自己的 OAuth 客户端" Style="{StaticResource Section}" />
+                <TextBlock Style="{StaticResource Detail}"
+                           Text="Client ID 是 Cloudflare 分配给这个应用的标识，不是密码。应用用它登录你的账号。创建时需要账号的管理员权限，每个账号只需创建一次。" />
+
+                <TextBlock Text="1. 打开 Cloudflare 后台的“管理账号 > OAuth clients”，选择 Create client。" Style="{StaticResource Step}" Margin="0,10,0,0" />
+                <Button Content="打开 OAuth clients" Click="OpenDashboard_Click" HorizontalAlignment="Left" Margin="16,6,0,0" />
+
+                <TextBlock Style="{StaticResource Step}" Margin="0,10,0,0"
+                           Text="2. 名称随意。Response type 选 code，Grant type 选 authorization_code 和 refresh_token，Token authentication method 选 none。" />
+
+                <TextBlock Text="3. Redirect URLs 填入：" Style="{StaticResource Step}" Margin="0,10,0,0" />
+                <DockPanel Margin="16,6,0,0">
+                    <Button DockPanel.Dock="Right" Content="复制" Margin="8,0,0,0" Click="CopyRedirect_Click" />
+                    <TextBox x:Name="RedirectBox" IsReadOnly="True" />
+                </DockPanel>
+
+                <TextBlock Style="{StaticResource Step}" Margin="0,10,0,0"
+                           Text="4. 权限选择 Cloudflare Tunnel Write、DNS Write、Zone Read 和 Account Settings Read，全部保持“必需”。" />
+
+                <TextBlock Style="{StaticResource Step}" Margin="0,10,0,0"
+                           Text="5. 创建后复制 Client ID，填到下面并保存。" />
+                <DockPanel Margin="16,6,0,0">
+                    <Button DockPanel.Dock="Right" Content="保存" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Click="SaveClientId_Click" />
+                    <TextBox x:Name="ClientIdBox" />
+                </DockPanel>
+                <TextBlock x:Name="ClientIdStatus" Foreground="{StaticResource Muted}" FontSize="12" Margin="16,4,0,0" TextWrapping="Wrap" />
+
+                <TextBlock Style="{StaticResource Detail}" Margin="0,12,0,0"
+                           Text="不需要 Client Secret。客户端保持默认的私有即可，账号成员都能登录；改成公开后无法改回。" />
+
+                <TextBlock Text="其他要求" Style="{StaticResource Section}" Margin="0,22,0,0" />
+                <TextBlock Text="网页后台管理的隧道" Style="{StaticResource Heading}" Margin="0,4,0,3" />
+                <TextBlock Style="{StaticResource Detail}"
+                           Text="服务端的 cloudflared 要先装好并连上。用本地配置文件管理的隧道能看到状态，但无法查看或修改应用。" />
+
+                <TextBlock Text="托管在 Cloudflare 的域名" Style="{StaticResource Heading}" />
+                <TextBlock Style="{StaticResource Detail}"
+                           Text="添加应用时会自动创建 DNS 记录，所以访问地址要属于这个账号下的域名。" />
+
+                <TextBlock Text="本机的 cloudflared" Style="{StaticResource Heading}" />
+                <TextBlock Style="{StaticResource Detail}"
+                           Text="连接 TCP 应用时需要。只查看状态和打开 HTTP 应用时不需要。" />
+
+                <TextBlock Text="空闲的 8976 端口" Style="{StaticResource Heading}" />
+                <TextBlock Style="{StaticResource Detail}"
+                           Text="浏览器授权完成后，通过本机的 8976 端口回到这个应用。" />
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
 </Window>

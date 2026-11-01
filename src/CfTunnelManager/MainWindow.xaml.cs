@@ -74,7 +74,7 @@ public partial class MainWindow : Window
 
     private void Requirements_Click(object sender, RoutedEventArgs e)
     {
-        new RequirementsWindow { Owner = this }.ShowDialog();
+        new RequirementsWindow(_viewModel) { Owner = this }.ShowDialog();
     }
 
     private async void AddApp_Click(object sender, RoutedEventArgs e)

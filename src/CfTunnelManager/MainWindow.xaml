@@ -168,7 +168,14 @@
                         <TextBlock Text="Tunnel Manager" Foreground="White" FontSize="32" FontWeight="SemiBold" HorizontalAlignment="Center" />
                         <TextBlock Text="查看隧道状态，管理已发布的应用" Foreground="#A9BACC" FontSize="14" Margin="0,8,0,28" HorizontalAlignment="Center" />
                         <Button Content="登录 Cloudflare" Command="{Binding SignInCommand}" Style="{StaticResource PrimaryButton}"
-                                Padding="32,10" HorizontalAlignment="Center" FontSize="14" FontWeight="SemiBold" />
+                                Padding="32,10" HorizontalAlignment="Center" FontSize="14" FontWeight="SemiBold"
+                                Visibility="{Binding HasClientId, Converter={StaticResource BoolToVisibility}}" />
+                        <StackPanel Visibility="{Binding NeedsClientId, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Foreground="White" FontSize="14" Width="300" TextWrapping="Wrap" TextAlignment="Center" LineHeight="22"
+                                       Text="登录前要先在 Cloudflare 创建 OAuth 客户端，并填入它的 Client ID。" />
+                            <Button Content="查看配置步骤" Click="Requirements_Click" Style="{StaticResource PrimaryButton}"
+                                    Padding="32,10" Margin="0,18,0,0" HorizontalAlignment="Center" FontSize="14" FontWeight="SemiBold" />
+                        </StackPanel>
                     </StackPanel>
                 </Grid>
             </Viewbox>

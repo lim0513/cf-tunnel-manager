@@ -28,10 +28,10 @@ dotnet run --project src/CfTunnelManager
 
 ## OAuth 客户端
 
-`ClientId` 是公开客户端的标识，不是密钥。客户端需要：
+程序不内置客户端。首次使用时按登录页的步骤创建，并填入 Client ID，它不是密钥。客户端需要：
 
 - Token authentication method：`none`
 - Redirect URL：`http://127.0.0.1:8976/callback`
 - Scopes：`account-settings.read`、`dns.write`、`zone.read`、`argotunnel.write`
 
-当前是私有客户端，只有所属 Cloudflare 账号的成员能登录。
+私有客户端只有所属 Cloudflare 账号的成员能登录。

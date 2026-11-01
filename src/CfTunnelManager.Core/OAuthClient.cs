@@ -16,6 +16,8 @@ public sealed class OAuthClient(HttpClient http, string clientId, TimeProvider? 
 
     private readonly TimeProvider _clock = clock ?? TimeProvider.System;
 
+    public string ClientId { get; set; } = clientId;
+
     public static string CreateVerifier() => Base64Url(RandomNumberGenerator.GetBytes(32));
 
     public static string CreateChallenge(string verifier) =>
@@ -26,7 +28,7 @@ public sealed class OAuthClient(HttpClient http, string clientId, TimeProvider? 
         var query = new Dictionary<string, string>
         {
             ["response_type"] = "code",
-            ["client_id"] = clientId,
+            ["client_id"] = ClientId,
             ["redirect_uri"] = RedirectUri,
             ["scope"] = Scopes,
             ["state"] = state,
@@ -40,7 +42,7 @@ public sealed class OAuthClient(HttpClient http, string clientId, TimeProvider? 
         RequestTokensAsync(new Dictionary<string, string>
         {
             ["grant_type"] = "authorization_code",
-            ["client_id"] = clientId,
+            ["client_id"] = ClientId,
             ["code"] = code,
             ["redirect_uri"] = RedirectUri,
             ["code_verifier"] = verifier,
@@ -50,7 +52,7 @@ public sealed class OAuthClient(HttpClient http, string clientId, TimeProvider? 
         RequestTokensAsync(new Dictionary<string, string>
         {
             ["grant_type"] = "refresh_token",
-            ["client_id"] = clientId,
+            ["client_id"] = ClientId,
             ["refresh_token"] = refreshToken,
         }, ct);
 
@@ -59,7 +61,7 @@ public sealed class OAuthClient(HttpClient http, string clientId, TimeProvider? 
         using var content = new FormUrlEncodedContent(new Dictionary<string, string>
         {
             ["token"] = refreshToken,
-            ["client_id"] = clientId,
+            ["client_id"] = ClientId,
         });
         using var response = await http.PostAsync(RevokeUrl, content, ct);
         response.EnsureSuccessStatusCode();

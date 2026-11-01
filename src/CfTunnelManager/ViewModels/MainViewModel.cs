@@ -13,7 +13,6 @@ namespace CfTunnelManager.ViewModels;
 
 public sealed class MainViewModel : ObservableObject, IDisposable
 {
-    private const string ClientId = "";
     private const int MaxConcurrentConfigReads = 4;
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan SignInTimeout = TimeSpan.FromMinutes(5);
@@ -25,6 +24,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private readonly AppManager _manager;
     private readonly AccessConnectionManager _connections = new();
     private readonly CollapsedTunnelStore _collapsed = new();
+    private readonly ClientIdStore _clientIds = new();
     private readonly DispatcherTimer _timer = new() { Interval = PollInterval };
 
     private IReadOnlyList<ZoneInfo> _zones = [];
@@ -35,7 +35,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     public MainViewModel()
     {
-        _oauth = new OAuthClient(_http, ClientId);
+        _oauth = new OAuthClient(_http, _clientIds.Load() ?? "");
         _session = new AuthSession(_oauth, new DpapiTokenStore());
         _isLoading = _session.IsSignedIn;
         _api = new CloudflareClient(_http, _session);
@@ -105,6 +105,27 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public string Summary => Tunnels.Count == 0 ? _accountName ?? "" : $"{_accountName}：{CountsText}";
 
     public IEnumerable<TunnelViewModel> EditableTunnels => Tunnels.Where(t => t.IsRemoteManaged);
+
+    public string ClientId => _oauth.ClientId;
+
+    public bool HasClientId => _oauth.ClientId.Length > 0;
+
+    public bool NeedsClientId => !HasClientId;
+
+    public void SetClientId(string clientId)
+    {
+        if (clientId.Length == 0)
+        {
+            _clientIds.Clear();
+        }
+        else
+        {
+            _clientIds.Save(clientId);
+        }
+        _oauth.ClientId = clientId;
+        OnChanged(nameof(HasClientId));
+        OnChanged(nameof(NeedsClientId));
+    }
 
     public async Task InitializeAsync()
     {
