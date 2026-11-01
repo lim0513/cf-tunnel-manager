@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Tunnel Manager">
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1F4A75" />
+      <stop offset="1" stop-color="#0E1E33" />
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="url(#background)" />
+  <path d="M60 204V122a68 68 0 0 1 136 0v82" fill="none" stroke="#FFFFFF" stroke-width="30" stroke-linecap="round" />
+  <circle cx="128" cy="150" r="30" fill="#F6821F" />
+</svg>
