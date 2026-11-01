@@ -33,7 +33,7 @@
 ### 1. 运行
 
 ```powershell
-git clone https://github.com/<你的用户名>/cf-tunnel-manager.git
+git clone https://github.com/lim0513/cf-tunnel-manager.git
 cd cf-tunnel-manager
 dotnet run --project src/CfTunnelManager
 ```
@@ -100,3 +100,7 @@ dotnet test
 - 本机没有 cloudflared 时只提示安装，不会自动下载。
 - 只管理已发布的应用，不包括专用网络路由、WARP 和 Access 策略。
 - 隧道在线不代表后端服务可用。
+
+## 许可证
+
+[MIT](LICENSE)
